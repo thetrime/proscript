@@ -1,0 +1,31 @@
+<html>
+  <head>
+    <title>WAM Test</title>
+    <link rel="stylesheet" href="test.css"/>
+  </head>
+  <body onload="onload()" onkeydown="return preventBackspace(event);">
+    <script type="text/javascript" src="wam-pp.js"></script>
+    <script type="text/javascript" src="bootstrap.js"></script>
+    <script type="text/javascript" src="test.js"></script>
+    <div style="height: 100%;">
+      <textarea id="code" style="border: 1px solid black; height: calc(50% - 20px); width: 100%;">
+factorial(0, 1):- !.
+factorial(1, 1).
+factorial(N, Factorial):-
+   NN is N-1,
+   factorial(NN, F),
+   Factorial is N * F.
+</textarea>
+      <button onClick="consult()" style="margin-left: auto; display: block; margin-right: auto;">Consult</button>
+      <div style="border: 1px solid black; height: 50%; width: 100%; overflow: scroll;" id="stdout" onKeyPress="keypress(event)" onKeyDown="keydown(event)" tabindex="0"></div>
+    </div>
+  </body>
+</html>
+
+<!--
+foo(bar).
+foo(baz).
+foo(qux):-fail.
+
+-->
+ 
