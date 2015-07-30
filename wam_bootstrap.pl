@@ -114,7 +114,7 @@ add_clause_to_existing(A, N):-
         ).
             
             
-
+quote_atom_for_javascript([], '"[]"'):- !.
 quote_atom_for_javascript(Atom, QuotedAtom):-
         atom_codes(Atom, Codes),
         quote_atom_for_javascript_1(QuotedCodes, Codes, []),
@@ -203,7 +203,7 @@ reset:-
         retractall(ftable(_,_)),
         retractall(fptable(_,_)),
         % [] is always 0
-        assert(atable([], 0)),
+        assert(atable('[]', 0)),
 
         flag(ftable, _, 0),
         flag(atable, _, 1),
