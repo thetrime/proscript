@@ -682,9 +682,7 @@ compile_body_unification([Arg|Args], Position, State, S3, PermanentVariables, O,
 % The resulting bytes are emitted using emit_code(+Address, +Code)
 assemble(Opcodes, N):-
         term_variables(Opcodes, Variables),
-        writeln('*********************************a'),
         encode_opcodes_1(Opcodes, N, Labels, [], DanglingReferences, []),
-        writeln('*********************************b'),
         % Now build the jump table between clauses
         compile_message(linking(Variables, Labels)),
         link(Labels, DanglingReferences),
