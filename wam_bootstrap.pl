@@ -10,7 +10,7 @@
    * add_clause_to_predicate(Name/Arity, +Head, +Body)
    * emit_code(+Address, +Code)
 ---------------------------------------------------------- */
-        
+
 :-dynamic(ftable/2). % functors
 :-dynamic(fltable/2). % floats
 :-dynamic(atable/2). % atoms
@@ -27,6 +27,7 @@ lookup_functor(Functor, Arity, N):-
             assert(ftable(F/Arity, N))
         ).
 
+lookup_atom([], 0):- !.
 lookup_atom(Atom, N):-
         ( atable(Atom, N)->
             true
@@ -49,7 +50,7 @@ emit_code(N, Code):-
 
 add_clause_to_predicate(Name/Arity, _, _):-
         setof(N-Code, T^(ctable(T, Code), N is T /\ 0x7fffffff), SortedCodes),
-        findall(Code, member(_-Code, SortedCodes), Codes),       
+        findall(Code, member(_-Code, SortedCodes), Codes),
         lookup_functor(Name, Arity, Predicate),
         ( retract(clause_table(Predicate, I, [254,0|PreviousCodes]))->
             % If there is a NOP clause, then we have only one clause. Make it try_me_else, then add our new one as trust_me.
@@ -75,8 +76,8 @@ add_clause_to_aux(AuxLabel, N, L, LT):-
         ; otherwise->
             % Brand new aux! This gets <NOP,0> and sets L
             NN is N+1,
-            assert(ctable(N, 254)),            
-            assert(ctable(NN, 0)),            
+            assert(ctable(N, 254)),
+            assert(ctable(NN, 0)),
             AuxLabel = defined(N),
             L = [label(AuxLabel, N)|LT]
         ).
@@ -112,8 +113,8 @@ add_clause_to_existing(A, N):-
             assert(ctable(N, 30)),
             assert(ctable(NN, 0))
         ).
-            
-            
+
+
 quote_atom_for_javascript([], '"[]"'):- !.
 quote_atom_for_javascript(Atom, QuotedAtom):-
         atom_codes(Atom, Codes),
@@ -128,7 +129,7 @@ quote_atom_for_javascript_2([92, 110|Codes])-->
         quote_atom_for_javascript_2(Codes).
 
 quote_atom_for_javascript_2([92, 92|Codes])-->
-        "\\", !, 
+        "\\", !,
         quote_atom_for_javascript_2(Codes).
 
 quote_atom_for_javascript_2([92, 34|Codes])-->
@@ -137,7 +138,7 @@ quote_atom_for_javascript_2([92, 34|Codes])-->
 
 
 quote_atom_for_javascript_2([Code|Codes])-->
-        [Code], 
+        [Code],
         quote_atom_for_javascript_2(Codes).
 
 quote_atom_for_javascript_2([34], [], []):- !.
@@ -145,7 +146,7 @@ quote_atom_for_javascript_2([34], [], []):- !.
 
 dump_tables(S):-
         ( setof(N-Atom, atable(Atom, N), Atoms)-> true ; otherwise-> Atoms = []),
-        findall(QuotedAtom, 
+        findall(QuotedAtom,
                 ( member(_-Atom, Atoms),
                   quote_atom_for_javascript(Atom, QuotedAtom)
                 ),
@@ -187,18 +188,18 @@ dump_tables(S):-
                 ),
                 FPredicates),
         atomic_list_concat(FPredicates, ', ', FPredicatesAtom),
-        format(S, 'foreign_predicates = {~w};~n', [FPredicatesAtom]).        
+        format(S, 'foreign_predicates = {~w};~n', [FPredicatesAtom]).
 
-reserve_predicate(Functor/Arity, Foreign):-        
+reserve_predicate(Functor/Arity, Foreign):-
         lookup_functor(Functor, Arity, F),
         assert(fptable(F, Foreign)).
-        
+
 reset_compile_buffer:-
         retractall(ctable(_, _)).
 
 reset:-
         retractall(ctable(_, _)),
-        retractall(clause_table(_,_,_)),        
+        retractall(clause_table(_,_,_)),
         retractall(atable(_,_)),
         retractall(ftable(_,_)),
         retractall(fptable(_,_)),
@@ -248,7 +249,7 @@ reset:-
         reserve_predicate((@>=)/2, predicate_term_egt),
         reserve_predicate((@<)/2, predicate_term_lt),
         reserve_predicate((@=<)/2, predicate_term_elt),
-        
+
         reserve_predicate(is/2, predicate_is),
         reserve_predicate((>)/2, predicate_gt),
         reserve_predicate((<)/2, predicate_lt),
@@ -271,7 +272,7 @@ reset:-
         reserve_predicate(get_byte/2, predicate_get_byte),
         reserve_predicate(peek_byte/2, predicate_peek_byte),
         reserve_predicate(put_byte/2, predicate_put_byte),
-        
+
         reserve_predicate(flush_output/1, predicate_flush_output),
         reserve_predicate(at_end_of_stream/1, predicate_at_end_of_stream),
         reserve_predicate(set_stream_position/2, predicate_set_stream_position),
@@ -279,7 +280,7 @@ reset:-
         reserve_predicate(current_stream/1, predicate_current_stream),
         reserve_predicate(write_term/3, predicate_write_term),
         reserve_predicate(current_op/3, predicate_current_op),
-        
+
         reserve_predicate(fail/0, predicate_fail),
         reserve_predicate(true/0, predicate_true),
         reserve_predicate(term_variables/2, predicate_term_variables),
@@ -292,7 +293,7 @@ reset:-
         reserve_predicate(read_term/3, read_term),
         reserve_predicate(close/2, predicate_close),
         reserve_predicate(op/3, predicate_op),
-        
+
         % Some handy extensions
         reserve_predicate(atom_to_memory_file/2, atom_to_memory_file),
         reserve_predicate(memory_file_to_atom/2, memory_file_to_atom),
@@ -303,7 +304,7 @@ reset:-
         reserve_predicate(flag/3, predicate_flag),
 
         % Stuff related to actually compiling
-        reserve_predicate(reset_compile_buffer/0, reset_compile_buffer),        
+        reserve_predicate(reset_compile_buffer/0, reset_compile_buffer),
         reserve_predicate(emit_code/2, emit_code),
         reserve_predicate(lookup_atom/2, predicate_lookup_atom),
         reserve_predicate(lookup_float/2, predicate_lookup_float),
@@ -336,7 +337,7 @@ reset:-
         reserve_predicate(throw/1, predicate_throw),
         reserve_predicate(get_exception/1, get_exception),
         reserve_predicate(clear_exception/0, clear_exception),
-        
+
         % Recorded database
         reserve_predicate(recorda/3, recorda),
         reserve_predicate(recordz/3, recordz),
@@ -347,7 +348,7 @@ reset:-
         reserve_predicate(gc/0, predicate_gc),
         reserve_predicate(statistics/0, predicate_statistics),
         true.
-        
+
 
 build_saved_state(SourceFiles, TopLevelQuery):-
         reset,
@@ -356,13 +357,19 @@ build_saved_state(SourceFiles, TopLevelQuery):-
         findall(Code, member(_-Code, SortedBootCodes), BootCodes),
         atomic_list_concat(BootCodes, ',', BootCode),
         compile_clause(toplevel:-TopLevelQuery),
-        compile_files(SourceFiles),
+        ( compile_files(SourceFiles)->
+            true
+        ; otherwise->
+            writeln(failed_to_compile),
+            halt,
+            fail
+        ),
         !,
         open('bootstrap.js', write, S1),
         format(S1, 'function load_state() {~n', []),
         format(S1, 'bootstrap_code = [0,255,~w];~n', [BootCode]),
         format(S1, 'retry_foreign_offset = 7;~n', []),
-%        format(S1, 'retry_foreign = {code: bootstrap_code, offset:7};~n', []),                
+%        format(S1, 'retry_foreign = {code: bootstrap_code, offset:7};~n', []),
         dump_tables(S1),
         format(S1, '}~n', []),
         close(S1),
@@ -381,7 +388,7 @@ bootstrap(Source, Query):-
                             compile_clause(bootstrap:-Query),
                             statistics,
                             compile_atom(Atom),
-                            statistics,                            
+                            statistics,
                             !,
                             bootstrap)).
 

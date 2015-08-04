@@ -1,5 +1,5 @@
 /* To do list
-    Garbage collection   
+    Garbage collection
     indexing
     Bignums?
     Modules
@@ -81,6 +81,7 @@ expand_term(In, Out):-
 expand_term(In, In).
 
 compile_clause(Term):-
+        format('Compiling ~q~n', [Term]),
         expand_term(Term, Terms),
         gc,
         writeln(done_gc),
@@ -94,22 +95,23 @@ compile_clause_1([Head|Tail]):-
         compile_clause_1(Tail).
 compile_clause_1(Term):-
         compile_clause_2(Term),
+        !,
         save_clause(Term).
 
 compile_clause_2(?- Body):-
         !,
         transform_body(Body, first, Transformed1, ExtraClauses, [], CutVariable),
         commit_to_cut(CutVariable),
-        entail(Transformed1, Transformed),                
+        entail(Transformed1, Transformed),
         permanent_variable_list(true(CutVariable), Transformed, PermanentVariables),
         environment_size_required(PermanentVariables, Transformed, EnvSize),
         allocate_environment(EnvSize, CutVariable, PermanentVariables, Opcodes, O1, [next(Arity)], State),
         first_goal_arity(Body, Arity),
         compile_body(Transformed, PermanentVariables, EnvSize, State, _, O1, O2),
         compile_auxiliary_goals(ExtraClauses, O2, []),
-        reset_compile_buffer,        
+        reset_compile_buffer,
         assemble(Opcodes, 2). % Note that a query is just compiled into the buffer and left there
-                    
+
 compile_clause_2(Head :- Body):-
         !,
         transform_body(Body, first, Transformed1, ExtraClauses, [], CutVariable),
@@ -127,6 +129,7 @@ compile_clause_2(Head :- Body):-
         reset_compile_buffer,
         !,
         assemble(Opcodes, 2).
+
 
 
 compile_clause_2(Head):-
@@ -184,7 +187,7 @@ transform_body(once(Goal), _Position, aux_head(Aux, Variables), [aux_definition(
 % D) The catch/2 introduces 2 choicepoints. This is why to check for determinism we must compare state.B before the goal and the third-to-top state.B afterwards!
 % E) Because Goal1 may include a !, we can only be sure that the top choicepoint after Goal1 (ie B2) is equal to *or less than* the original one if the goal is deterministic.
 %       We can shield the ! from leaking out of the whole goal, but not leaking out of the aux itself. This is why we have >=(B,B1) and not =(B,B1) in aux2.
-transform_body(setup_call_catcher_cleanup(Setup, Goal, Catcher, Cleanup), _Position, (Setup1, goal(get_current_block(Block)), aux_head(Aux1, [Block|V1])), AuxClauses, Tail, CutVariable):-        
+transform_body(setup_call_catcher_cleanup(Setup, Goal, Catcher, Cleanup), _Position, (Setup1, goal(get_current_block(Block)), aux_head(Aux1, [Block|V1])), AuxClauses, Tail, CutVariable):-
         !,
         AuxClauses = [aux_definition(Aux1, [B1|V1], no_local_cut, (goal(mark_top_choicepoint(MarkVariables, Mark)),
                                                                    aux_head(Aux3, []),
@@ -217,10 +220,10 @@ transform_body(setup_call_catcher_cleanup(Setup, Goal, Catcher, Cleanup), _Posit
         % Shield the parent choicepoint from cuts. Cuts inside the goal should be considered local to the aux1 clause (oddly enough?)
         transform_body(Goal, not_first, Goal1, C1, C2, NewVar),
         instantiate_local_cut(MaybeLocalCut, NewVar), % This is run backwards!
-        term_variables(Goal, GoalVars),        
+        term_variables(Goal, GoalVars),
         transform_body(Cleanup, not_first, Cleanup1, C2, Tail, CutVariable),
         term_variables(Goal-Catcher-Cleanup, V1a),
-        include_cut_point_as_argument_if_needed(CutVariable, V1a, V1),        
+        include_cut_point_as_argument_if_needed(CutVariable, V1a, V1),
         term_variables(Catcher-Cleanup, V2a),
         include_cut_point_as_argument_if_needed(CutVariable, V2a, V2).
 
@@ -236,7 +239,7 @@ transform_body(setup_call_catcher_cleanup(Setup, Goal, Catcher, Cleanup), _Posit
 transform_body(catch(Goal, Catcher, Recovery), _Position, (goal(get_current_block(Block)), aux_head(Aux1, [Block, Catcher|V1])), [aux_definition(Aux1, [B1, _|V1], no_local_cut, (goal(install_new_block(NewBlock)), Goal1, goal(end_block(B1, NewBlock)))),
                                                                                                                                                                aux_definition(Aux1, [B2, Catcher|V1], no_local_cut, (goal(reset_block(B2)), goal(get_exception(Ball)), aux_head(Aux2, [Ball, Catcher|V1]))),
                                                                                                                                                                aux_definition(Aux2, [Ball, Catcher|V1], local_cut(CutVar), (goal(Ball = Catcher), !(CutVar), goal(clear_exception), Recovery1)),
-                                                                                                                                                               aux_definition(Aux2, [_, _|V1], no_local_cut, (goal(unwind_stack)))|Clauses], Tail, CutVariable):-        
+                                                                                                                                                               aux_definition(Aux2, [_, _|V1], no_local_cut, (goal(unwind_stack)))|Clauses], Tail, CutVariable):-
         transform_body(Goal, not_first, Goal1, Clauses, C1, CutVariable),
         transform_body(Recovery, not_first, Recovery1, C1, Tail, CutVariable),
         term_variables(Goal-Recovery, V1a),
@@ -248,18 +251,18 @@ transform_body(forall(Cond, Action), Position, Translated, [aux_definition(Aux, 
         !,
         transform_body(\+aux_head(Aux, Variables), Position, Translated, ExtraClauses, E1, CutVariable),
         transform_body((Cond, \+Action), not_first, AuxBody, E1, Tail, CutVariable),
-        term_variables(Cond-Action, V1),      
+        term_variables(Cond-Action, V1),
         include_cut_point_as_argument_if_needed(CutVariable, V1, Variables).
 
-transform_body((A->B ; C), _Position, aux_head(Aux, Variables), [aux_definition(Aux, Variables, local_cut(LocalCutVariable), (AA, !(LocalCutVariable), BB)),                                                                
-                                                                 aux_definition(Aux, Variables, no_local_cut, CC)|ExtraClauses], Tail, CutVariable):-        
+transform_body((A->B ; C), _Position, aux_head(Aux, Variables), [aux_definition(Aux, Variables, local_cut(LocalCutVariable), (AA, !(LocalCutVariable), BB)),
+                                                                 aux_definition(Aux, Variables, no_local_cut, CC)|ExtraClauses], Tail, CutVariable):-
         !,
         transform_body(A, not_first, AA, ExtraClauses, T1, CutVariable),
         transform_body(B, not_first, BB, T1, T2, CutVariable),
         transform_body(C, not_first, CC, T2, Tail, CutVariable),
         term_variables(AA-BB-CC, V1),
         include_cut_point_as_argument_if_needed(CutVariable, V1, Variables).
-                                                                               
+
 
 transform_body((A -> B), _Position, aux_head(Aux, Variables), [aux_definition(Aux, Variables, local_cut(LocalCutVariable), (AA, !(LocalCutVariable), BB))|ExtraClauses], Tail, CutVariable):-
         !,
@@ -296,15 +299,15 @@ include_cut_point_as_argument_if_needed(has_cut(CutVariable), V1, [CutVariable|V
 
 compile_auxiliary_goals([], O, O):- !.
 compile_auxiliary_goals([aux_definition(Label, Variables, LocalCutVariable, Body1)|Aux], [aux_label(Label)|Opcodes], Tail):-
-        entail(Body1, Body),                
+        entail(Body1, Body),
         instantiate_local_cut(LocalCutVariable, LocalCut),
         permanent_variable_list(Variables-LocalCut, Body, PermanentVariables),
         environment_size_required(PermanentVariables, Body, EnvSize),
         list_length(Variables, Arity),
-        first_goal_arity(Body, BodyArity),                
+        first_goal_arity(Body, BodyArity),
         include_local_cut_in_arity(Arity, LocalCut, A0),
         A1 is A0 + BodyArity,
-        allocate_environment(EnvSize, LocalCut, PermanentVariables, Opcodes, O1, [next(A1)], State), 
+        allocate_environment(EnvSize, LocalCut, PermanentVariables, Opcodes, O1, [next(A1)], State),
         compile_head_args(Variables, State, S1, 0, PermanentVariables, O1, O2),
         compile_body(Body, PermanentVariables, EnvSize, S1, _, O2, O3),
         compile_auxiliary_goals(Aux, O3, Tail).
@@ -355,7 +358,7 @@ entail((Item, Tail), L, Flattened):-
         entail(Tail, L, L1).
 entail(Item, Flattened, (Item, Flattened)).
 
-        
+
 permanent_variable_list(Head, (Goal1, Goals), Permanent):-
         !,
         grab_variables_from_goals((Head-Goal1, Goals), [], VariablesInSubgoals),
@@ -424,14 +427,18 @@ ensure_vars_allocated([permanent_var(Variable, y(I), _)|PermanentVariables], [pu
 deallocate_environment(none, A, A):-!.
 deallocate_environment(_, [deallocate|A], A).
 
+
+atom_or_empty_list(A):- A == [].
+atom_or_empty_list(A):- atom(A).
+
 compile_head_args([], S, S, _, _, A, A):-!.
 compile_head_args([Arg|Args], State, S2, I, PermanentVariables, Opcodes, Tail):-
         compile_head_arg(Arg, State, S1, x(I), PermanentVariables, Opcodes, O1),
         II is I+1,
         compile_head_args(Args, S1, S2, II, PermanentVariables, O1, Tail).
-        
+
 compile_head_arg(Arg, State, State, Ai, _PermanentVariables, [get_constant(Arg, Ai)|Tail], Tail):-
-        atom(Arg),
+        atom_or_empty_list(Arg),
         !.
 compile_head_arg(Arg, State, State, Ai, _PermanentVariables, [get_integer(Arg, Ai)|Tail], Tail):-
         integer(Arg),
@@ -457,7 +464,7 @@ compile_head_arg(Arg, State, S2, Ai, PermanentVariables, [get_structure(Functor/
 
 compile_head_unification([], S, S, _, O, O, []):- !.
 compile_head_unification([Arg|Args], State, S1, PermanentVariables, [unify_constant(Arg)|O1], Tail, Unifications):-
-        atom(Arg),
+        atom_or_empty_list(Arg),
         !,
         compile_head_unification(Args, State, S1, PermanentVariables, O1, Tail, Unifications).
 compile_head_unification([Arg|Args], State, S1, PermanentVariables, [unify_integer(Arg)|O1], Tail, Unifications):-
@@ -481,7 +488,7 @@ complete_head_unification([], S, S, _PermanentVariables, Tail, Tail).
 complete_head_unification([unify(Xi, Arg)|U], S1, S3, PermanentVariables, Opcodes, Tail):-
         compile_head_arg(Arg, S1, S2, Xi, PermanentVariables, Opcodes, O1),
         complete_head_unification(U, S2, S3, PermanentVariables, O1, Tail).
-                         
+
 get_variable(Arg, Source, _PermanentVariables, State, State, [get_value(Register, Source)|Tail], Tail):-
         already_used(Arg, State, Register, _), !.
 get_variable(Arg, Source, PermanentVariables, State, [var(Arg, get, y(I))|State], [get_variable(y(I), Source)|Tail], Tail):-
@@ -580,6 +587,7 @@ compile_goal(aux_head(Label, Variables), Position, LCO, PermanentVariables, EnvS
         list_length(Variables, Arity),
         resize_state(Position, State, Arity, S1),
         compile_body_args(Variables, Position, 0, PermanentVariables, S1, S2, Opcodes, O1),
+        format(user_error, 'CALL ~q~n', [compile_aux_call(LCO, Arity, EnvSize, Label, O1, OpcodesTail)]),
         compile_aux_call(LCO, Arity, EnvSize, Label, O1, OpcodesTail).
 
 % Note that get_top_choicepoint(n, Yn) must mark Yn as seen (similar to get_level).
@@ -601,7 +609,7 @@ compile_goal(!(Var), _Position, call, PermanentVariables, _EnvSize, State, State
 compile_goal(!(Var), _Position, depart, PermanentVariables, _EnvSize, State, State, [cut(y(Register)), deallocate, proceed|OpcodesTail], OpcodesTail):-
         !,
         variable_must_be_known_permanent(Var, PermanentVariables, y(Register)).
-            
+
 compile_goal(goal(Goal), Position, LCO, PermanentVariables, EnvSize, State, S2, Opcodes, OpcodesTail):-
         !,
         Goal =.. [Functor|Args],
@@ -640,7 +648,7 @@ compile_body_args([Arg|Args], Position, I, PermanentVariables, S1, S3, Opcodes, 
         compile_body_args(Args, Position, II, PermanentVariables, S2, S3, O1, Tail).
 
 compile_body_arg(Arg, _Position, Dest, _PermanentVariables, State, State, [put_constant(Arg, Dest)|Tail], Tail):-
-        atom(Arg), !.
+        atom_or_empty_list(Arg), !.
 compile_body_arg(Arg, _Position, Dest, _PermanentVariables, State, State, [put_integer(Arg, Dest)|Tail], Tail):-
         integer(Arg), !.
 compile_body_arg(Arg, _Position, Dest, _PermanentVariables, State, State, [put_float(Arg, Dest)|Tail], Tail):-
@@ -650,14 +658,14 @@ compile_body_arg(Arg, Position, Dest, PermanentVariables, State, S1, Opcodes, Ta
 compile_body_arg([Head|Tail], Position, Dest, PermanentVariables, State, S1, Opcodes, OpcodesTail):-
         compile_body_unification([Head, Tail], Position, State, S1, PermanentVariables, Opcodes, [put_list(Dest)|R], R, OpcodesTail).
 
-compile_body_arg(Arg, Position, Dest, PermanentVariables, State, S1, Opcodes, Tail):-        
+compile_body_arg(Arg, Position, Dest, PermanentVariables, State, S1, Opcodes, Tail):-
         Arg =.. [Functor|Args],
         list_length(Args, Arity),
         compile_body_unification(Args, Position, State, S1, PermanentVariables, Opcodes, [put_structure(Functor/Arity, Dest)|R], R, Tail).
 
 compile_body_unification([], _, State, State, _PermanentVariables, Opcodes, Opcodes, R, R):- !.
 compile_body_unification([Arg|Args], Position, State, S1, PermanentVariables, O, OT, [unify_constant(Arg)|R], RT):-
-        atom(Arg), !, compile_body_unification(Args, Position, State, S1, PermanentVariables, O, OT, R, RT).
+        atom_or_empty_list(Arg), !, compile_body_unification(Args, Position, State, S1, PermanentVariables, O, OT, R, RT).
 compile_body_unification([Arg|Args], Position, State, S1, PermanentVariables, O, OT, [unify_integer(Arg)|R], RT):-
         integer(Arg), !, compile_body_unification(Args, Position, State, S1, PermanentVariables, O, OT, R, RT).
 compile_body_unification([Arg|Args], Position, State, S2, PermanentVariables, O, OT, R, RT):-
@@ -668,14 +676,16 @@ compile_body_unification([Arg|Args], Position, State, S3, PermanentVariables, O,
         fresh_variable(State, S1, Xi),
         compile_body_arg(Arg, Position, Xi, PermanentVariables, S1, S2, O, O1),
         compile_body_unification(Args, Position, S2, S3, PermanentVariables, O1, OT, R, RT).
-        
+
 
 % -------------------- Below is the assembler -----------------------------
 % Assemble Opcodes into a state, beginning at memory address N
 % The resulting bytes are emitted using emit_code(+Address, +Code)
 assemble(Opcodes, N):-
         term_variables(Opcodes, Variables),
+        writeln('*********************************a'),
         encode_opcodes_1(Opcodes, N, Labels, [], DanglingReferences, []),
+        writeln('*********************************b'),
         % Now build the jump table between clauses
         compile_message(linking(Variables, Labels)),
         link(Labels, DanglingReferences),
@@ -755,8 +765,9 @@ encode_opcodes_1([try_me_else(Label)|As], N, L, L1, [address_of(Label, NN)|D], D
 encode_opcodes_1([label(Label)|As], N, [label(Label, N)|L], L1, D, D1):-
         !,
         encode_opcodes_1(As, N, L, L1, D, D1).
-        
+
 encode_opcodes_1([A|As], N, L, L1, D, D1):-
+        !,
         compile_message('    '(A, N)),
         encode_opcode(A, OpcodeSize, Codes),
         emit_codes(N, Codes),
@@ -853,7 +864,7 @@ compile_files([File|Files]):-
         compile_file(File),
         !,
         compile_files(Files).
-        
+
 
 compile_file(Source):-
         open(Source, read, S),
