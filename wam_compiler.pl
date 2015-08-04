@@ -587,7 +587,6 @@ compile_goal(aux_head(Label, Variables), Position, LCO, PermanentVariables, EnvS
         list_length(Variables, Arity),
         resize_state(Position, State, Arity, S1),
         compile_body_args(Variables, Position, 0, PermanentVariables, S1, S2, Opcodes, O1),
-        format(user_error, 'CALL ~q~n', [compile_aux_call(LCO, Arity, EnvSize, Label, O1, OpcodesTail)]),
         compile_aux_call(LCO, Arity, EnvSize, Label, O1, OpcodesTail).
 
 % Note that get_top_choicepoint(n, Yn) must mark Yn as seen (similar to get_level).
