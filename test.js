@@ -44,11 +44,11 @@ function stdout(msg)
 
 function onload()
 {
-    output_console = document.getElementById('stdout');
-    consult();
+    output_console = document.getElementById('stdout');    
     stdout_buffer = document.createElement('div');
     stdout_buffer.innerHTML = "";
     output_console.appendChild(stdout_buffer);     
+    consult();
 
     query_node = document.createElement('div');
     query_node.className = "query";
