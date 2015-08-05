@@ -1,4 +1,4 @@
-var history = [];
+var x_history = [];
 var h_ptr = -1;
 
 var query = "";
@@ -108,11 +108,11 @@ function keydown(e)
         e.preventDefault();
         e.stopPropagation();
         h_ptr++;
-        if (h_ptr >= history.length)
+        if (h_ptr >= x_history.length)
         {
-            h_ptr = history.length-1;
+            h_ptr = x_history.length-1;
         }
-        query = history[h_ptr];
+        query = x_history[h_ptr];
         query_node.innerHTML = "?-" + query;
         output_console.removeChild(query_node);
         output_console.appendChild(query_node);
@@ -129,7 +129,7 @@ function keydown(e)
             query = "";
         }
         else
-            query = history[h_ptr];
+            query = x_history[h_ptr];
         query_node.innerHTML = "?-" + query;
         output_console.removeChild(query_node);
         output_console.appendChild(query_node);
@@ -201,7 +201,7 @@ function keypress(e)
         old_query.innerHTML = "?-" + query;
         old_query.className = "old_query";
         output_console.appendChild(old_query);
-        history.unshift(query);
+        x_history.unshift(query);
         h_ptr = -1;
         try_running();
     }
