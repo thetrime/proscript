@@ -113,7 +113,7 @@ function read_expression(s, precedence, isarg, islist, expression)
     // Either the token is an operator, or it must be an atom (or the start of a list or curly-list)
     var op = prefix_operators[token];
     if (op === undefined)
-    {  
+    {
         if (token == "\"")
         {
             // We have to just read chars until we get a close " (taking care with \" in the middle)
@@ -203,7 +203,9 @@ function read_expression(s, precedence, isarg, islist, expression)
                         return syntax_error("missing ]");
                 }
                 else
+                {
                     return syntax_error("mismatched " + token + " at " + next);
+                }
             }
         }
         else if (token == "(")
@@ -219,6 +221,11 @@ function read_expression(s, precedence, isarg, islist, expression)
             next = next.value;
             if (next != ")")
                 return syntax_error("mismatched ( at " + next);
+        }
+        else if (token == "]")
+        {
+            expression.value = token;
+            return true;
         }
         else
         {
